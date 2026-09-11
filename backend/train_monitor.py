@@ -37,6 +37,8 @@ class TrainMonitor:
                     data = r.json()
                     self.routes[train_num] = data.get("data", {}).get("geojson", {})
                     return self.routes[train_num]
+                else:
+                    print(f"RailRadar: Train {train_num} route returned {r.status_code}")
             except Exception as e:
                 print(f"Error fetching route for {train_num}: {e}")
         return None
@@ -103,8 +105,60 @@ class TrainMonitor:
                                 "lng": lng,
                                 "base_route": train_num
                             }
+                    else:
+                        print(f"RailRadar: Train {train_num} live data returned {r.status_code}")
                 except Exception as e:
                     print(f"RailRadar API error for {train_num}: {e}")
+
+        # Ensure we have at least simulated data if real data failed
+        if not self.live_trains:
+            self._use_fallback_data()
+
+    def _use_fallback_data(self):
+        # Fake data if API fails (like rate limits)
+        if "12952" in self.monitored_trains:
+            self.live_trains["12952"] = {
+                "trainNumber": "12952",
+                "trainName": "Simulated Rajdhani (API Quota)",
+                "status": "running",
+                "isLive": False,
+                "delayMinutes": 5,
+                "currentStation": "Simulated Kota",
+                "lat": 25.183,
+                "lng": 75.83,
+                "distanceFromOriginKm": 465.0,
+                "base_route": "12952"
+            }
+            if "12952" not in self.routes:
+                self.routes["12952"] = {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [[77.2167, 28.6139], [75.8333, 25.1833], [72.8167, 18.9667]]
+                    }
+                }
+                
+        if "12841" in self.monitored_trains:
+            self.live_trains["12841"] = {
+                "trainNumber": "12841",
+                "trainName": "Simulated Coromandel (API Quota)",
+                "status": "running",
+                "isLive": False,
+                "delayMinutes": 10,
+                "currentStation": "Simulated Bhubaneswar",
+                "lat": 20.266,
+                "lng": 85.83,
+                "distanceFromOriginKm": 437.0,
+                "base_route": "12841"
+            }
+            if "12841" not in self.routes:
+                self.routes["12841"] = {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [[88.3639, 22.5726], [85.8333, 20.2667], [80.2785, 13.0827]]
+                    }
+                }
 
     def get_state(self):
         merged = {**self.live_trains, **self.ghost_trains}

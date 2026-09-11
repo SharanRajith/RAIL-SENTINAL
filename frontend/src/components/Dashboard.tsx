@@ -4,6 +4,8 @@ import TrackMap from './TrackMap';
 import AlertBanner from './AlertBanner';
 import TrackSchematic from './TrackSchematic';
 import AlertLog from './AlertLog';
+import ETAPanel from './ETAPanel';
+import RiskPanel from './RiskPanel';
 
 interface Props {
   state: AppState;
@@ -126,6 +128,8 @@ const Dashboard = ({ state }: Props) => {
       <div className="mt-8">
         <TrackSchematic state={state} />
       </div>
+      <ETAPanel state={state} />
+      <RiskPanel state={state} />
       <AlertLog alerts={state.alerts} />
 
       {/* Escalation Status Panel */}

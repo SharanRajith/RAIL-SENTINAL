@@ -10,10 +10,8 @@ const TrackSchematic: React.FC<Props> = ({ state }) => {
     return <div className="text-gray-400 p-4 border border-gray-700 rounded">Waiting for track data...</div>;
   }
 
-  const { tracks, points, signals, source_train, source_train_name, source_progress_pct } = state.scada;
-  const progressPct = source_progress_pct ?? 0;
-  // Map real route progress (0-100%) onto the schematic's horizontal span (x: 20 -> 880)
-  const markerX = 20 + (progressPct / 100) * 860;
+  const { tracks, points, signals } = state.scada;
+  const { trains } = state.trains as any;
 
   const getSignalColor = (aspect: string) => {
     switch (aspect) {
@@ -95,36 +93,49 @@ const TrackSchematic: React.FC<Props> = ({ state }) => {
             </g>
           ))}
 
-          {/* ── REAL TRAIN MARKER ── */}
-          {/* Position is driven by source_progress_pct: the real train's
-              actual distanceFromOriginKm / totalDistanceKm from RailRadar,
-              not a fake coordinate. Occupancy of T1-T4 above is derived
-              from this same real value. */}
-          {source_train && (
-            <g className="transition-all duration-1000 ease-linear">
-              <rect x={markerX - 45} y={106} width="90" height="28" rx="5" fill="#3b82f6" stroke="#2563eb" strokeWidth="2" filter="url(#trainGlow)" />
-              <rect x={markerX - 35} y={112} width="12" height="16" rx="2" fill="#93c5fd" />
-              <rect x={markerX - 18} y={112} width="12" height="16" rx="2" fill="#93c5fd" />
-              <rect x={markerX - 1} y={112} width="12" height="16" rx="2" fill="#93c5fd" />
-              <rect x={markerX + 16} y={112} width="12" height="16" rx="2" fill="#93c5fd" />
+          {/* ── TRAINS (from RailRadar) ── */}
+          {Object.entries(trains).map(([id, t]: [string, any]) => {
+            const tx = (t.x / 120) * 860 + 20;
+            const ty = t.y === 10 ? 120 : 220;
+            const isGhost = id.startsWith('GHOST');
+            const fillColor = isGhost ? '#ef4444' : '#3b82f6';
+            const strokeColor = isGhost ? '#dc2626' : '#2563eb';
+            
+            return (
+              <g key={id} className="transition-all duration-1000 ease-linear">
+                {/* Train body */}
+                <rect x={tx - 45} y={ty - 14} width="90" height="28" rx="5" fill={fillColor} stroke={strokeColor} strokeWidth="2" filter="url(#trainGlow)" />
+                
+                {/* Train windows */}
+                <rect x={tx - 35} y={ty - 8} width="12" height="16" rx="2" fill={isGhost ? '#fca5a5' : '#93c5fd'} />
+                <rect x={tx - 18} y={ty - 8} width="12" height="16" rx="2" fill={isGhost ? '#fca5a5' : '#93c5fd'} />
+                <rect x={tx - 1} y={ty - 8} width="12" height="16" rx="2" fill={isGhost ? '#fca5a5' : '#93c5fd'} />
+                <rect x={tx + 16} y={ty - 8} width="12" height="16" rx="2" fill={isGhost ? '#fca5a5' : '#93c5fd'} />
+                
+                {/* Direction arrow */}
+                {t.direction === 1 ? (
+                  <polygon points={`${tx+50},-4 ${tx+58},0 ${tx+50},4`} fill={fillColor} transform={`translate(0, ${ty})`} />
+                ) : (
+                  <polygon points={`${tx-50},-4 ${tx-58},0 ${tx-50},4`} fill={fillColor} transform={`translate(0, ${ty})`} />
+                )}
 
-              <g transform={`translate(${markerX}, 65)`}>
-                <rect x="-90" y="-15" width="180" height="38" rx="6" fill="#0f172a" stroke="#334155" strokeWidth="1" opacity="0.95" />
-                <text x="0" y="-1" fill="#e2e8f0" fontSize="10" textAnchor="middle" fontWeight="bold">
-                  {source_train_name || source_train}
-                </text>
-                <text x="0" y="14" fill="#4ade80" fontSize="9" textAnchor="middle">
-                  {progressPct.toFixed(1)}% along real route (Train #{source_train})
-                </text>
+                {/* Train info card */}
+                <g transform={`translate(${tx}, ${ty - 55})`}>
+                  <rect x="-80" y="-15" width="160" height="38" rx="6" fill="#0f172a" stroke="#334155" strokeWidth="1" opacity="0.95" />
+                  <text x="0" y="-1" fill="#e2e8f0" fontSize="10" textAnchor="middle" fontWeight="bold">
+                    {t.trainName ? (t.trainName.length > 28 ? t.trainName.substring(0, 28) + '...' : t.trainName) : id}
+                  </text>
+                  <text x="0" y="14" fill={t.delayMinutes > 0 ? '#fbbf24' : '#4ade80'} fontSize="9" textAnchor="middle">
+                    {t.currentStation || 'En Route'} {t.delayMinutes > 0 ? `(+${t.delayMinutes} min late)` : '(On Time)'}
+                  </text>
+                </g>
               </g>
-            </g>
-          )}
+            );
+          })}
 
-          {/* ── SOURCE LABEL ── */}
-          <text x="450" y="300" fill="#475569" fontSize="14" textAnchor="middle" fontFamily="monospace" fontWeight="bold">
-            {source_train
-              ? `SECTION OCCUPANCY DERIVED FROM LIVE TRAIN #${source_train} (RailRadar) — POINTS/SIGNALS SIMULATED`
-              : 'WAITING FOR LIVE TRAIN DATA (RailRadar)...'}
+          {/* ── STATION LABEL ── */}
+          <text x="450" y="300" fill="#475569" fontSize="16" textAnchor="middle" fontFamily="monospace" fontWeight="bold">
+            SIMULATED INTERLOCKING ZONE — BALASORE MODEL
           </text>
         </svg>
       </div>
